@@ -4,3 +4,6 @@
 [submodule "jukebox"]
 	path = jukebox
 	url = git@github.com:krisleech/jukebox.git
+[submodule "jukestats"]
+	path = jukestats
+	url = git@github.com:krisleech/jukestats.git

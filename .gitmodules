@@ -1,0 +1,6 @@
+[submodule "routemaster"]
+	path = routemaster
+	url = git@github.com:HouseTrip/routemaster.git
+[submodule "jukebox"]
+	path = jukebox
+	url = git@github.com:krisleech/jukebox.git

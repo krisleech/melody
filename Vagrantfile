@@ -23,6 +23,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   #
   # config.vm.network "forwarded_port", guest: 5672, host: 5555 # rabbitMQ
   config.vm.network "forwarded_port", guest: 15672, host: 5555 # rabbitMQ web UI
+  config.vm.network "forwarded_port", guest: 80, host: 8080 # Routemaster
   # config.vm.network "forwarded_port", guest: 6379, host: 6666 # Redis
 
   # Create a private network, which allows host-only access to the machine
@@ -81,6 +82,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   sudo rabbitmqctl set_user_tags admin administrator
 
   sudo rabbit-server restart
+
+  sudo apt-get install build-essential -y
+  sudo apt-get install ruby-dev -y
+  sudo gem install tunnels
+  sudo tunnels 80 5672 &
   SCRIPT
 
   config.vm.provision "shell", inline: $script

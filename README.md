@@ -1,5 +1,5 @@
 # Melody
 
 ```
-./bin/setup
+./bin/launch
 ```

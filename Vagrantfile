@@ -11,8 +11,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   #
   # config.vm.network "forwarded_port", guest: 5672, host: 5555 # rabbitMQ
   # config.vm.network "forwarded_port", guest: 6379, host: 6666 # Redis
-  
-  config.vm.network "forwarded_port", guest: 15672, host: 5555 # RabbitMQ web UI
+  # config.vm.network "forwarded_port", guest: 15672, host: 5555 # RabbitMQ web UI
   config.vm.network "forwarded_port", guest: 443,   host: 4434 # Routemaster HTTP
 
   # Create a private network, which allows host-only access to the machine
@@ -59,7 +58,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # RabbitMQ
   sudo echo "deb http://www.rabbitmq.com/debian/ testing main" >> /etc/apt/sources.list
   curl http://www.rabbitmq.com/rabbitmq-signing-key-public.asc | sudo apt-key add -
-  apt-get update
+  sudo apt-get update
   sudo apt-get install rabbitmq-server -y -qq
   sudo rabbitmq-plugins enable rabbitmq_management
 
@@ -70,19 +69,18 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   sudo service rabbitmq-server restart
 
-  # Install tunnels (SSL proxy)
+  # Install Tunnels (SSL proxy)
   sudo gem install tunnels
-  # FIXME: use upstart for tunnels so it starts on reboot
-  sudo tunnels 443 17890 &
+  sudo echo -e 'start on startup\nexec sudo tunnels 0.0.0.0:443 0.0.0.0:17890' >> /etc/init/tunnels.conf
+  sudo service tunnels start
 
   # Install Routemaster
   sudo gem install bundler
   cd /routemaster
+  echo 'bundle installing...'
   bundle install --quiet
   sudo foreman export upstart /etc/init --app routemaster --user vagrant
   sudo service routemaster start
-
-  # echo `sudo netstat -tulpn | grep LISTEN`
   SCRIPT
 
   config.vm.provision "shell", inline: $script

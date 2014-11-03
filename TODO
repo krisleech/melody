@@ -1,0 +1,6 @@
+Jukebox needs to be HTTPS for Routemaster to allow it as a callback URL
+Port 9000 when using upstart not accessable
+Make each VM have an IP so they can communicate
+Spilt Vagrantfile in to multiple files
+
+tmux conf to setup windows for each project

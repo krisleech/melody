@@ -1,16 +1,15 @@
 # -*- mode: ruby -*-
 # vi: set ft=ruby :
 
+# TODO: get IP addresses from ENV
+
 VAGRANTFILE_API_VERSION = "2"
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "ubuntu/trusty64"
 
   config.vm.define "jukebox" do |jb|
-    jb.vm.network "forwarded_port", guest: 3000, host: 9000 # Web app
-
-    # jb.vm.network "private_network", ip: "192.168.33.10"
-    # jb.ssh.forward_agent = true
+    jb.vm.network "private_network", ip: "192.168.0.200"
 
     jb.vm.synced_folder "jukebox", "/jukebox"
 
@@ -22,15 +21,19 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     sudo apt-get install git -y -qq
     sudo apt-get install sqlite3 libsqlite3-dev -y -qq
 
-    cd
-
     # Ruby 2.1.4
     sudo add-apt-repository ppa:brightbox/ruby-ng
     sudo apt-get update
     sudo apt-get install ruby2.1-dev ruby2.1 -y -qq
+    echo "gem: --no-ri --no-rdoc" > ~/.gemrc
+
+    # Install Tunnels (SSL proxy)
+    sudo gem install tunnels
+    sudo echo -e 'start on startup\nexec sudo tunnels 0.0.0.0:443 0.0.0.0:3000' >> /etc/init/tunnels.conf
+    sudo service tunnels start
 
     # Install App
-    sudo gem install bundler --no-ri --no-rdoc
+    sudo gem install bundler
     cd /jukebox
     echo 'bundle installing...'
     bundle install --quiet
@@ -43,21 +46,15 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   end
 
   config.vm.define "routemaster" do |rm|
-    rm.vm.network "forwarded_port", guest: 15672, host: 5555 # RabbitMQ web UI
-    rm.vm.network "forwarded_port", guest: 443,   host: 4434 # Routemaster HTTP
-
-    # rm.vm.network "private_network", ip: "192.168.33.10"
+    rm.vm.network "private_network", ip: "192.168.0.201"
 
     # rm.ssh.forward_agent = true
 
     rm.vm.synced_folder "routemaster", "/routemaster"
-    # rm.vm.synced_folder "jukebox", "/jukebox"
-    # rm.vm.synced_folder "jukestats", "/jukestats"
 
     rm.vm.provider "virtualbox" do |vb|
     end
 
-    # sudo apt-get -y upgrade
     $script = <<-SCRIPT
     sudo apt-get install build-essential -y -qq
     sudo apt-get install libssl-dev -y -qq
@@ -107,6 +104,44 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     SCRIPT
 
     rm.vm.provision "shell", inline: $script
+  end
 
+  config.vm.define "jukestats" do |js|
+    js.vm.network "private_network", ip: "192.168.0.202"
+
+    js.vm.synced_folder "jukestats", "/jukestats"
+
+    js.vm.provider "virtualbox" do |vb|
+    end
+
+    $script = <<-SCRIPT
+    sudo apt-get install build-essential -y -qq
+    sudo apt-get install git -y -qq
+    sudo apt-get install sqlite3 libsqlite3-dev -y -qq
+
+    cd
+
+    # Ruby 2.1.4
+    sudo add-apt-repository ppa:brightbox/ruby-ng
+    sudo apt-get update
+    sudo apt-get install ruby2.1-dev ruby2.1 -y -qq
+    echo "gem: --no-ri --no-rdoc" > ~/.gemrc
+
+    # Install Tunnels (SSL proxy)
+    sudo gem install tunnels
+    sudo echo -e 'start on startup\nexec sudo tunnels 0.0.0.0:443 0.0.0.0:3000' >> /etc/init/tunnels.conf
+    sudo service tunnels start
+
+    # Install App
+    sudo gem install bundler
+    cd /jukestats
+    echo 'bundle installing...'
+    bundle install --quiet
+    sudo foreman export upstart /etc/init --app jukestats --user vagrant
+    sudo service jukestats start
+    bundle exec rake db:migrate
+    SCRIPT
+
+    js.vm.provision "shell", inline: $script
   end
 end

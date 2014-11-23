@@ -5,19 +5,33 @@
 
 VAGRANTFILE_API_VERSION = "2"
 
+$ENV='production'
+
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "ubuntu/trusty64"
 
   config.vm.define "jukebox" do |jb|
-    jb.vm.network "private_network", ip: "192.168.0.200"
+    jb.vm.network "private_network", ip: "192.168.1.0" # host only network
+    # jb.vm.hostname = "jukebox"
+
+    # forwards ports from guest to host
+    # config.vm.forward_port 3000, 3000
+    # config.vm.forward_port 3500, 3500
 
     jb.vm.synced_folder "jukebox", "/jukebox"
 
-    jb.vm.provider "virtualbox" do |vb|
+    config.vm.provider "virtualbox" do |v|
+      v.memory = 1024
+      v.cpus = 2
+      # v.customize ["modifyvm", :id, "--cpuexecutioncap", "50"]
     end
 
     $script = <<-SCRIPT
     export DEBIAN_FRONTEND=noninteractive
+
+    sudo locale-gen en_GB.UTF-8
+
+    sudo apt-get update > /dev/null
 
     sudo apt-get install build-essential -y -qq
     sudo apt-get install git -y -qq
@@ -25,23 +39,18 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
     # Ruby 2.1.4
     sudo add-apt-repository ppa:brightbox/ruby-ng
-    sudo apt-get update
+    sudo apt-get update > /dev/null
     sudo apt-get install ruby2.1-dev ruby2.1 -y -qq
     echo "gem: --no-ri --no-rdoc" > ~/.gemrc
-
-    # Install Tunnels (SSL proxy)
-    sudo gem install tunnels
-    sudo echo -e 'start on startup\nexec sudo tunnels 0.0.0.0:443 0.0.0.0:3000' >> /etc/init/tunnels.conf
-    sudo service tunnels start
+    echo Using `ruby -v`
+    sudo gem install bundler
 
     # Install App
-    sudo gem install bundler
     cd /jukebox
-    echo 'bundle installing...'
-    bundle install --quiet
-    sudo foreman export upstart /etc/init --app jukebox --user vagrant
+    bundle install --quiet --deployment
+    sudo bundle exec foreman export upstart /etc/init --app jukebox --user vagrant --env .env,.env.#{$ENV}
+    env RAILS_ENV=#{$ENV} bundle exec rake db:migrate db:seed
     sudo service jukebox start
-    bundle exec rake db:migrate db:seed
     SCRIPT
 
     jb.vm.provision "shell", inline: $script

@@ -17,6 +17,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
 
     $script = <<-SCRIPT
+    export DEBIAN_FRONTEND=noninteractive
+
     sudo apt-get install build-essential -y -qq
     sudo apt-get install git -y -qq
     sudo apt-get install sqlite3 libsqlite3-dev -y -qq
@@ -56,6 +58,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
 
     $script = <<-SCRIPT
+    export DEBIAN_FRONTEND=noninteractive
+
     sudo apt-get install build-essential -y -qq
     sudo apt-get install libssl-dev -y -qq
     sudo apt-get install git -y -qq
@@ -115,6 +119,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
 
     $script = <<-SCRIPT
+    export DEBIAN_FRONTEND=noninteractive
+
     sudo apt-get install build-essential -y -qq
     sudo apt-get install git -y -qq
     sudo apt-get install sqlite3 libsqlite3-dev -y -qq

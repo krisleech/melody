@@ -11,23 +11,22 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.box = "ubuntu/trusty64"
 
   config.vm.define "jukebox" do |jb|
-    jb.vm.network "private_network", ip: "192.168.1.0" # host only network
-    # jb.vm.hostname = "jukebox"
+    jb.vm.network "private_network", ip: "192.168.1.1"
 
-    # forwards ports from guest to host
-    # config.vm.forward_port 3000, 3000
-    # config.vm.forward_port 3500, 3500
+    jb.vm.hostname = "jukebox.dev"
 
     jb.vm.synced_folder "jukebox", "/jukebox"
 
     config.vm.provider "virtualbox" do |v|
       v.memory = 1024
       v.cpus = 2
-      # v.customize ["modifyvm", :id, "--cpuexecutioncap", "50"]
     end
 
     $script = <<-SCRIPT
     export DEBIAN_FRONTEND=noninteractive
+
+    sudo ufw allow 3000/tcp
+    sudo ufw allow 3500/tcp
 
     sudo locale-gen en_GB.UTF-8
 
@@ -49,17 +48,18 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     cd /jukebox
     bundle install --quiet --deployment
     sudo bundle exec foreman export upstart /etc/init --app jukebox --user vagrant --env .env,.env.#{$ENV}
-    env RAILS_ENV=#{$ENV} bundle exec rake db:migrate db:seed
+    env RAILS_ENV=#{$ENV} bundle exec rake db:migrate db:seed assets:precompile
     sudo service jukebox start
+
+    echo 'It can take a few mins before the application is ready...'
     SCRIPT
 
     jb.vm.provision "shell", inline: $script
   end
 
   config.vm.define "routemaster" do |rm|
-    rm.vm.network "private_network", ip: "192.168.0.201"
-
-    # rm.ssh.forward_agent = true
+    rm.vm.network "private_network", ip: "192.168.1.2"
+    rm.vm.hostname = "routemaster.dev"
 
     rm.vm.synced_folder "routemaster", "/routemaster"
 
@@ -69,16 +69,18 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     $script = <<-SCRIPT
     export DEBIAN_FRONTEND=noninteractive
 
+    sudo locale-gen en_GB.UTF-8
+
+    # rabbit management web interface
+    sudo ufw allow 15672/tcp
+
+    sudo apt-get update > /dev/null
+
     sudo apt-get install build-essential -y -qq
     sudo apt-get install libssl-dev -y -qq
     sudo apt-get install git -y -qq
 
     cd
-
-    # Ruby 2.1.4
-    # sudo add-apt-repository ppa:brightbox/ruby-ng
-    # sudo apt-get update
-    # sudo apt-get install ruby2.1-dev ruby2.1 -y -qq
 
     # Ruby 2.1.2
     # uses packager.io distribution
@@ -98,7 +100,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     # Configure  RabbitMQ
     sudo rabbitmqctl add_vhost routemaster.development
     sudo rabbitmqctl set_permissions -p routemaster.development guest ".*" ".*" ".*"
-    sudo echo '[{rabbit, [{loopback_users, []}]}].' >> /etc/rabbitmq/rabbitmq.rm
+    sudo echo '[{rabbit, [{loopback_users, []}]}].' >> /etc/rabbitmq/rabbitmq.conf
 
     sudo service rabbitmq-server restart
 
@@ -111,8 +113,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     sudo gem install bundler
     cd /routemaster
     echo 'bundle installing...'
-    bundle install --quiet
-    sudo foreman export upstart /etc/init --app routemaster --user vagrant
+    bundle install --quiet --deployment
+    sudo bundle exec foreman export upstart /etc/init --app routemaster --user vagrant
     sudo service routemaster start
     SCRIPT
 
@@ -130,6 +132,10 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     $script = <<-SCRIPT
     export DEBIAN_FRONTEND=noninteractive
 
+    sudo locale-gen en_GB.UTF-8
+
+    sudo apt-get update > /dev/null
+
     sudo apt-get install build-essential -y -qq
     sudo apt-get install git -y -qq
     sudo apt-get install sqlite3 libsqlite3-dev -y -qq
@@ -138,7 +144,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
     # Ruby 2.1.4
     sudo add-apt-repository ppa:brightbox/ruby-ng
-    sudo apt-get update
+    sudo apt-get update > /dev/null
     sudo apt-get install ruby2.1-dev ruby2.1 -y -qq
     echo "gem: --no-ri --no-rdoc" > ~/.gemrc
 
